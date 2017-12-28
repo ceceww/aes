@@ -113,10 +113,22 @@ void AESEncrypt(unsigned char * message, unsigned char * expandedKey, unsigned c
 }
 
 int main() {
-	unsigned char message[] = "This is a message we will encrypt with AES!";
+//	unsigned char message[] = "This is a message we will encrypt with AES!";
+
+	unsigned char message[48] =
+	{ 
+	  0x54,0x68,0x69,0x73,0x20,0x69,0x73,0x20,
+	  0x61,0x20,0x6d,0x65,0x73,0x73,0x61,0x67,
+	  0x65,0x20,0x77,0x65,0x20,0x77,0x69,0x6c,
+	  0x6c,0x20,0x65,0x6e,0x63,0x72,0x79,0x70,
+	  0x74,0x20,0x77,0x69,0x74,0x68,0x20,0x41,
+	  0x45,0x53,0x21,0x00,0x00,0x00,0x00,0x00
+	};
 
 	/* Pad message*/
 	int originalLen = strlen((const char *)message);
+	cout << "ORIGINALLEN:" << originalLen << endl;
+
 	int paddedMessageLen = originalLen;
 
 	if ((paddedMessageLen % 16) != 0) {
@@ -146,14 +158,21 @@ int main() {
 
 	KeyExpansion(key, expandedKey);
 
+	cout << "PADDED MSG LEN:" << paddedMessageLen << endl;
+
 	for (int i = 0; i < paddedMessageLen; i += 16) {
 		AESEncrypt(paddedMessage+i, expandedKey, encryptedMessage+i);
 	}
+
+	cout << "ENCRYPTED MSG LEN:" << strlen((const char*)encryptedMessage) << endl;
 
 	cout << "Encrypted message:" << endl;
 	for (int i = 0; i < paddedMessageLen; i++) {
 		cout << hex << (int) encryptedMessage[i];
 		cout << " ";
+	}
+	for (int i = 0; i < paddedMessageLen; i++) {
+		cout <<encryptedMessage[i];
 	}
 
 	// Free memory

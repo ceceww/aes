@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cstring>
 #include "structures.h"
 
 using namespace std;
@@ -13,22 +14,22 @@ void SubRoundKey(unsigned char * state, unsigned char * roundKey) {
 void InverseMixColumns(unsigned char * state) {
 	unsigned char tmp[16];
 
-	tmp[0] = (unsigned char)mul4[state[0]] ^ mul11[state[1]] ^ mul13[state[2]] ^ mul9[state[3]];
+	tmp[0] = (unsigned char)mul14[state[0]] ^ mul11[state[1]] ^ mul13[state[2]] ^ mul9[state[3]];
 	tmp[1] = (unsigned char)mul9[state[0]] ^ mul14[state[1]] ^ mul11[state[2]] ^ mul13[state[3]];
 	tmp[2] = (unsigned char)mul13[state[0]] ^ mul9[state[1]] ^ mul14[state[2]] ^ mul11[state[3]];
 	tmp[3] = (unsigned char)mul11[state[0]] ^ mul13[state[1]] ^ mul9[state[2]] ^ mul14[state[3]];
 
-	tmp[4] = (unsigned char)mul4[state[4]] ^ mul11[state[5]] ^ mul13[state[6]] ^ mul9[state[7]];
+	tmp[4] = (unsigned char)mul14[state[4]] ^ mul11[state[5]] ^ mul13[state[6]] ^ mul9[state[7]];
 	tmp[5] = (unsigned char)mul9[state[4]] ^ mul14[state[5]] ^ mul11[state[6]] ^ mul13[state[7]];
 	tmp[6] = (unsigned char)mul13[state[4]] ^ mul9[state[5]] ^ mul14[state[6]] ^ mul11[state[7]];
 	tmp[7] = (unsigned char)mul11[state[4]] ^ mul13[state[5]] ^ mul9[state[6]] ^ mul14[state[7]];
 
-	tmp[8] = (unsigned char)mul4[state[8]] ^ mul11[state[9]] ^ mul13[state[10]] ^ mul9[state[11]];
+	tmp[8] = (unsigned char)mul14[state[8]] ^ mul11[state[9]] ^ mul13[state[10]] ^ mul9[state[11]];
 	tmp[9] = (unsigned char)mul9[state[8]] ^ mul14[state[9]] ^ mul11[state[10]] ^ mul13[state[11]];
 	tmp[10] = (unsigned char)mul13[state[8]] ^ mul9[state[9]] ^ mul14[state[10]] ^ mul11[state[11]];
 	tmp[11] = (unsigned char)mul11[state[8]] ^ mul13[state[9]] ^ mul9[state[10]] ^ mul14[state[11]];
 
-	tmp[12] = (unsigned char)mul4[state[12]] ^ mul11[state[13]] ^ mul13[state[14]] ^ mul9[state[15]];
+	tmp[12] = (unsigned char)mul14[state[12]] ^ mul11[state[13]] ^ mul13[state[14]] ^ mul9[state[15]];
 	tmp[13] = (unsigned char)mul9[state[12]] ^ mul14[state[13]] ^ mul11[state[14]] ^ mul13[state[15]];
 	tmp[14] = (unsigned char)mul13[state[12]] ^ mul9[state[13]] ^ mul14[state[14]] ^ mul11[state[15]];
 	tmp[15] = (unsigned char)mul11[state[12]] ^ mul13[state[13]] ^ mul9[state[14]] ^ mul14[state[15]];
@@ -72,7 +73,9 @@ void ShiftRows(unsigned char * state) {
 }
 
 void SubBytes(unsigned char * state) {
-	state[i] = inv_s[state[i]];
+	for (int i = 0; i < 16; i++) { // Perform substitution to each of the 16 bytes
+		state[i] = inv_s[state[i]];
+	}
 }
 
 
@@ -89,19 +92,28 @@ void InitialRound(unsigned char * state, unsigned char * key) {
 	SubBytes(state);
 }
 
-void FinalRound(unsigned char * state, unsigned char * key) { SubRoundKey(state, key); }
-
 void AESDecrypt(unsigned char * encryptedMessage, unsigned char * expandedKey, unsigned char * decryptedMessage)
 {
-	InitialRound();
+	unsigned char state[16]; // Stores the first 16 bytes of encrypted message
+
+	for (int i = 0; i < 16; i++) {
+		state[i] = encryptedMessage[i];
+	}
+
+	InitialRound(state, expandedKey+160);
 
 	int numberOfRounds = 9;
 
-	for (int i = 0; i < numberOfRounds; i++) {
-		Round();
+	for (int i = 8; i >= 0; i--) {
+		Round(state, expandedKey + (16 * (i + 1)));
 	}
 
-	FinalRound();
+	SubRoundKey(state, expandedKey); // Final round
+
+	// Copy decrypted state to buffer
+	for (int i = 0; i < 16; i++) {
+		decryptedMessage[i] = state[i];
+	}
 }
 
 int main() {
@@ -118,6 +130,20 @@ int main() {
 		0xcd,0xfd,0x59,0xb8,0xeb,0x0e,0x83,0xd1
 	};
 
+	int originalLen = strlen((const char *)encryptedMessage);
+	cout << "ORIGINALLEN:" << originalLen << endl;
+
+	cout << "Encrypted message:" << endl;
+	for (int i = 0; i < originalLen; i++) {
+		cout << hex << (int)encryptedMessage[i];
+		cout << " ";
+	}
+	cout << endl;
+	for (int i = 0; i < originalLen; i++) {
+		cout << encryptedMessage[i];
+	}
+	cout << endl;
+
 	unsigned char key[16] =
 	{
 		1, 2, 3, 4,
@@ -125,6 +151,29 @@ int main() {
 		9, 10, 11, 12,
 		13, 14, 15, 16
 	};
+
+	unsigned char expandedKey[176];
+
+	KeyExpansion(key, expandedKey);
+	
+	int messageLen = strlen((const char *)encryptedMessage);
+
+	unsigned char * decryptedMessage = new unsigned char[messageLen];
+
+	cout << "MESSAGE LEN:" << messageLen << endl;
+
+	for (int i = 0; i < messageLen; i += 16) {
+		AESDecrypt(encryptedMessage + i, expandedKey, decryptedMessage + i);
+	}
+
+	cout << "Decrypted message:" << endl;
+	for (int i = 0; i < messageLen; i++) {
+		cout << hex << (int)decryptedMessage[i];
+		cout << " ";
+	}
+	for (int i = 0; i < messageLen; i++) {
+		cout << decryptedMessage[i];
+	}
 
 	return 0;
 }
