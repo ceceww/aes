@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <cstring>
+#include <fstream>
+#include <sstream>
 #include "structures.h"
 
 using namespace std;
@@ -179,16 +181,27 @@ int main() {
 
 	unsigned char * encryptedMessage = new unsigned char[paddedMessageLen];
 
-	unsigned char key[16] =
+	string str;
+	ifstream myfile("keyfile");
+	if (myfile.is_open())
 	{
-	1, 2, 3, 4,
-	5, 6, 7, 8,
-	9, 10, 11, 12,
-	13, 14, 15, 16
-	};
-	unsigned char expandedKey[176];
+		getline(myfile, str); // The first line of file should be the key
+		myfile.close();
+	}
 
-	cout << "The key is: " << key << endl;
+	else cout << "Unable to open file";
+
+	istringstream hex_chars_stream(str);
+	unsigned char key[16];
+	int i = 0;
+	unsigned int c;
+	while (hex_chars_stream >> hex >> c)
+	{
+		key[i] = c;
+		i++;
+	}
+
+	unsigned char expandedKey[176];
 
 	KeyExpansion(key, expandedKey);
 
@@ -196,14 +209,17 @@ int main() {
 		AESEncrypt(paddedMessage+i, expandedKey, encryptedMessage+i);
 	}
 
-	cout << "Encrypted message:" << endl;
+	cout << "Encrypted message in hex:" << endl;
 	for (int i = 0; i < paddedMessageLen; i++) {
 		cout << hex << (int) encryptedMessage[i];
 		cout << " ";
 	}
+	cout << "\nEncrypted message:" << endl;
 	for (int i = 0; i < paddedMessageLen; i++) {
-		cout <<encryptedMessage[i];
+		cout << encryptedMessage[i];
 	}
+
+	cout << endl;
 
 	// Free memory
 	delete[] paddedMessage;
