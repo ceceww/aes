@@ -111,7 +111,7 @@ void FinalRound(unsigned char * state, unsigned char * key) {
 	AddRoundKey(state, key);
 }
 
-/* The main encryption function
+/* The AES encryption function
  * Organizes the confusion and diffusion steps into one function
  */
 void AESEncrypt(unsigned char * message, unsigned char * expandedKey, unsigned char * encryptedMessage) {
@@ -138,17 +138,6 @@ void AESEncrypt(unsigned char * message, unsigned char * expandedKey, unsigned c
 }
 
 int main() {
-	//unsigned char message[] = "This is a message we will encrypt with AES!";
-
-	/*unsigned char message[48] =
-	{ 
-	  0x54,0x68,0x69,0x73,0x20,0x69,0x73,0x20,
-	  0x61,0x20,0x6d,0x65,0x73,0x73,0x61,0x67,
-	  0x65,0x20,0x77,0x65,0x20,0x77,0x69,0x6c,
-	  0x6c,0x20,0x65,0x6e,0x63,0x72,0x79,0x70,
-	  0x74,0x20,0x77,0x69,0x74,0x68,0x20,0x41,
-	  0x45,0x53,0x21,0x00,0x00,0x00,0x00,0x00
-	};*/
 
 	cout << "=============================" << endl;
 	cout << " 128-bit AES Encryption Tool   " << endl;
@@ -182,11 +171,13 @@ int main() {
 	unsigned char * encryptedMessage = new unsigned char[paddedMessageLen];
 
 	string str;
-	ifstream myfile("keyfile");
-	if (myfile.is_open())
+	ifstream infile;
+	infile.open("keyfile", ios::in | ios::binary);
+
+	if (infile.is_open())
 	{
-		getline(myfile, str); // The first line of file should be the key
-		myfile.close();
+		getline(infile, str); // The first line of file should be the key
+		infile.close();
 	}
 
 	else cout << "Unable to open file";
@@ -214,12 +205,20 @@ int main() {
 		cout << hex << (int) encryptedMessage[i];
 		cout << " ";
 	}
-	cout << "\nEncrypted message:" << endl;
-	for (int i = 0; i < paddedMessageLen; i++) {
-		cout << encryptedMessage[i];
-	}
 
 	cout << endl;
+
+	// Write the encrypted string out to file "message.aes"
+	ofstream outfile;
+	outfile.open("message.aes", ios::out | ios::binary);
+	if (outfile.is_open())
+	{
+		outfile << encryptedMessage;
+		outfile.close();
+		cout << "Wrote encrypted message to file message.aes" << endl;
+	}
+
+	else cout << "Unable to open file";
 
 	// Free memory
 	delete[] paddedMessage;
