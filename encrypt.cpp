@@ -1,21 +1,34 @@
+/* encrypt.cpp
+ * Performs encryption using AES 128-bit
+ * @author Cecelia Wisniewska
+ * Modified: 28/12/2017
+ */
+
 #include <iostream>
 #include <cstring>
 #include "structures.h"
 
 using namespace std;
 
+/* Serves as the initial round during encryption
+ * AddRoundKey is simply an XOR of a 128-bit block with the 128-bit key.
+ */
 void AddRoundKey(unsigned char * state, unsigned char * roundKey) {
 	for (int i = 0; i < 16; i++) {
 		state[i] ^= roundKey[i];
 	}
 }
 
+/* Perform substitution to each of the 16 bytes
+ * Uses S-box as lookup table 
+ */
 void SubBytes(unsigned char * state) {
-	for (int i = 0; i < 16; i++) { // Perform substitution to each of the 16 bytes
+	for (int i = 0; i < 16; i++) {
 		state[i] = s[state[i]];
 	}
 }
 
+// Shift left, adds diffusion
 void ShiftRows(unsigned char * state) {
 	unsigned char tmp[16];
 
@@ -47,6 +60,10 @@ void ShiftRows(unsigned char * state) {
 		state[i] = tmp[i];
 	}
 }
+
+ /* MixColumns uses mul2, mul3 look-up tables
+  * Source of diffusion
+  */
 void MixColumns(unsigned char * state) {
 	unsigned char tmp[16];
 
@@ -75,6 +92,9 @@ void MixColumns(unsigned char * state) {
 	}
 }
 
+/* Each round operates on 128 bits at a time
+ * The number of rounds is defined in AESEncrypt()
+ */
 void Round(unsigned char * state, unsigned char * key) {
 	SubBytes(state);
 	ShiftRows(state);
@@ -82,13 +102,16 @@ void Round(unsigned char * state, unsigned char * key) {
 	AddRoundKey(state, key);
 }
 
+ // Same as Round() except it doesn't mix columns
 void FinalRound(unsigned char * state, unsigned char * key) {
 	SubBytes(state);
 	ShiftRows(state);
 	AddRoundKey(state, key);
 }
 
-
+/* The main encryption function
+ * Organizes the confusion and diffusion steps into one function
+ */
 void AESEncrypt(unsigned char * message, unsigned char * expandedKey, unsigned char * encryptedMessage) {
 	unsigned char state[16]; // Stores the first 16 bytes of original message
 
@@ -113,9 +136,9 @@ void AESEncrypt(unsigned char * message, unsigned char * expandedKey, unsigned c
 }
 
 int main() {
-//	unsigned char message[] = "This is a message we will encrypt with AES!";
+	//unsigned char message[] = "This is a message we will encrypt with AES!";
 
-	unsigned char message[48] =
+	/*unsigned char message[48] =
 	{ 
 	  0x54,0x68,0x69,0x73,0x20,0x69,0x73,0x20,
 	  0x61,0x20,0x6d,0x65,0x73,0x73,0x61,0x67,
@@ -123,11 +146,20 @@ int main() {
 	  0x6c,0x20,0x65,0x6e,0x63,0x72,0x79,0x70,
 	  0x74,0x20,0x77,0x69,0x74,0x68,0x20,0x41,
 	  0x45,0x53,0x21,0x00,0x00,0x00,0x00,0x00
-	};
+	};*/
 
-	/* Pad message*/
+	cout << "=============================" << endl;
+	cout << " 128-bit AES Encryption Tool   " << endl;
+	cout << "=============================" << endl;
+
+	char message[1024];
+
+	cout << "Enter the message to encrypt: ";
+	cin.getline(message, sizeof(message));
+	cout << message << endl;
+
+	// Pad message to 16 bytes
 	int originalLen = strlen((const char *)message);
-	cout << "ORIGINALLEN:" << originalLen << endl;
 
 	int paddedMessageLen = originalLen;
 
@@ -156,15 +188,13 @@ int main() {
 	};
 	unsigned char expandedKey[176];
 
-	KeyExpansion(key, expandedKey);
+	cout << "The key is: " << key << endl;
 
-	cout << "PADDED MSG LEN:" << paddedMessageLen << endl;
+	KeyExpansion(key, expandedKey);
 
 	for (int i = 0; i < paddedMessageLen; i += 16) {
 		AESEncrypt(paddedMessage+i, expandedKey, encryptedMessage+i);
 	}
-
-	cout << "ENCRYPTED MSG LEN:" << strlen((const char*)encryptedMessage) << endl;
 
 	cout << "Encrypted message:" << endl;
 	for (int i = 0; i < paddedMessageLen; i++) {
