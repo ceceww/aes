@@ -1,16 +1,28 @@
+/* decrypt.cpp
+ * Performs decryption using AES 128-bit
+ * @author Cecelia Wisniewska
+ */
 #include <iostream>
 #include <cstring>
+#include <fstream>
+#include <sstream>
 #include "structures.h"
 
 using namespace std;
 
-/* Addition is same as subtraction for GF it's just XOR */
+/* Used in Round() and serves as the final round during decryption
+ * SubRoundKey is simply an XOR of a 128-bit block with the 128-bit key.
+ * So basically does the same as AddRoundKey in the encryption
+ */
 void SubRoundKey(unsigned char * state, unsigned char * roundKey) {
 	for (int i = 0; i < 16; i++) {
 		state[i] ^= roundKey[i];
 	}
 }
 
+/* InverseMixColumns uses mul9, mul11, mul13, mul14 look-up tables
+ * Unmixes the columns by reversing the effect of MixColumns in encryption
+ */
 void InverseMixColumns(unsigned char * state) {
 	unsigned char tmp[16];
 
@@ -39,7 +51,7 @@ void InverseMixColumns(unsigned char * state) {
 	}
 }
 
-/* Shifts rows right (rather than left) for decryption */
+// Shifts rows right (rather than left) for decryption
 void ShiftRows(unsigned char * state) {
 	unsigned char tmp[16];
 
@@ -72,13 +84,19 @@ void ShiftRows(unsigned char * state) {
 	}
 }
 
+/* Perform substitution to each of the 16 bytes
+ * Uses inverse S-box as lookup table
+ */
 void SubBytes(unsigned char * state) {
 	for (int i = 0; i < 16; i++) { // Perform substitution to each of the 16 bytes
 		state[i] = inv_s[state[i]];
 	}
 }
 
-
+/* Each round operates on 128 bits at a time
+ * The number of rounds is defined in AESDecrypt()
+ * Not surprisingly, the steps are the encryption steps but reversed
+ */
 void Round(unsigned char * state, unsigned char * key) {
 	SubRoundKey(state, key);
 	InverseMixColumns(state);
@@ -86,12 +104,16 @@ void Round(unsigned char * state, unsigned char * key) {
 	SubBytes(state);
 }
 
+// Same as Round() but no InverseMixColumns
 void InitialRound(unsigned char * state, unsigned char * key) {
 	SubRoundKey(state, key);
 	ShiftRows(state);
 	SubBytes(state);
 }
 
+/* The AES decryption function
+ * Organizes all the decryption steps into one function
+ */
 void AESDecrypt(unsigned char * encryptedMessage, unsigned char * expandedKey, unsigned char * decryptedMessage)
 {
 	unsigned char state[16]; // Stores the first 16 bytes of encrypted message
@@ -117,40 +139,62 @@ void AESDecrypt(unsigned char * encryptedMessage, unsigned char * expandedKey, u
 }
 
 int main() {
-	/*
-	* The message we want to decrypt
-	*/
-	unsigned char encryptedMessage[48] =
+
+	cout << "=============================" << endl;
+	cout << " 128-bit AES Decryption Tool " << endl;
+	cout << "=============================" << endl;
+
+	// Read in the message from message.aes
+	string msgstr;
+	ifstream infile;
+	infile.open("message.aes", ios::in | ios::binary);
+
+	if (infile.is_open())
 	{
-		0xb6,0x4b,0x27,0xbb,0x16,0x15,0xa6,0xf5,
-		0x32,0x18,0x6c,0xc5,0xfa,0x94,0xb5,0x5e,
-		0x5c,0x54,0xea,0x1b,0xdf,0x97,0x1e,0x3d,
-		0xe3,0x1b,0xfc,0x02,0x75,0x22,0x76,0x52,
-		0xd5,0x7b,0xd5,0x42,0xba,0x0f,0x68,0x50,
-		0xcd,0xfd,0x59,0xb8,0xeb,0x0e,0x83,0xd1
-	};
-
-	int originalLen = strlen((const char *)encryptedMessage);
-	cout << "ORIGINALLEN:" << originalLen << endl;
-
-	cout << "Encrypted message:" << endl;
-	for (int i = 0; i < originalLen; i++) {
-		cout << hex << (int)encryptedMessage[i];
-		cout << " ";
+		getline(infile, msgstr); // The first line of file is the message
+		cout << "Read in encrypted message from message.aes" << endl;
+		infile.close();
 	}
-	cout << endl;
-	for (int i = 0; i < originalLen; i++) {
-		cout << encryptedMessage[i];
-	}
-	cout << endl;
 
-	unsigned char key[16] =
+	else cout << "Unable to open file";
+
+	char * msg = new char[msgstr.size()+1];
+
+	strcpy(msg, msgstr.c_str());
+
+	int n = strlen((const char*)msg);
+
+	unsigned char * encryptedMessage = new unsigned char[n];
+	for (int i = 0; i < n; i++) {
+		encryptedMessage[i] = (unsigned char)msg[i];
+	}
+
+	// Free memory
+	delete[] msg;
+
+	// Read in the key
+	string keystr;
+	ifstream keyfile;
+	keyfile.open("keyfile", ios::in | ios::binary);
+
+	if (keyfile.is_open())
 	{
-		1, 2, 3, 4,
-		5, 6, 7, 8,
-		9, 10, 11, 12,
-		13, 14, 15, 16
-	};
+		getline(keyfile, keystr); // The first line of file should be the key
+		cout << "Read in the 128-bit key from keyfile" << endl;
+		keyfile.close();
+	}
+
+	else cout << "Unable to open file";
+
+	istringstream hex_chars_stream(keystr);
+	unsigned char key[16];
+	int i = 0;
+	unsigned int c;
+	while (hex_chars_stream >> hex >> c)
+	{
+		key[i] = c;
+		i++;
+	}
 
 	unsigned char expandedKey[176];
 
@@ -160,20 +204,21 @@ int main() {
 
 	unsigned char * decryptedMessage = new unsigned char[messageLen];
 
-	cout << "MESSAGE LEN:" << messageLen << endl;
-
 	for (int i = 0; i < messageLen; i += 16) {
 		AESDecrypt(encryptedMessage + i, expandedKey, decryptedMessage + i);
 	}
 
-	cout << "Decrypted message:" << endl;
+	cout << "Decrypted message in hex:" << endl;
 	for (int i = 0; i < messageLen; i++) {
 		cout << hex << (int)decryptedMessage[i];
 		cout << " ";
 	}
+	cout << endl;
+	cout << "Decrypted message: ";
 	for (int i = 0; i < messageLen; i++) {
 		cout << decryptedMessage[i];
 	}
+	cout << endl;
 
 	return 0;
 }

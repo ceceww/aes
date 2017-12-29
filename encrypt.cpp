@@ -1,7 +1,6 @@
 /* encrypt.cpp
  * Performs encryption using AES 128-bit
  * @author Cecelia Wisniewska
- * Modified: 28/12/2017
  */
 
 #include <iostream>
